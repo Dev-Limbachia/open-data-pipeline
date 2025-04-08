@@ -68,3 +68,15 @@ We’ll be using public APIs such as:
 - Connect Superset or Metabase to PostgreSQL
 - Build & share dashboards
 
+---
+## 📁 Project Structure
+open-data-pipeline/
+├── data/                # Raw and processed files (CSV, Parquet)
+├── notebooks/           # Jupyter notebooks (optional)
+├── src/                 # Source code (ETL, transformations)
+│   ├── ingestion/       # API ingestion scripts
+│   ├── transformation/  # Pandas / PySpark transformations
+│   └── utils/           # Reusable functions, config, logging
+├── .gitignore
+├── requirements.txt     # Python dependencies
+└── README.md            # Project overview
