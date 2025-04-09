@@ -1,6 +1,12 @@
+import os
 from sqlalchemy import create_engine
 import yfinance as yf
 import urllib.parse
+from dotenv import load_dotenv  # Import the load_dotenv function
+
+# Load environment variables from the .env file
+load_dotenv()
+
 
 # Define the stock data fetching function
 def fetch_stock_data(ticker, start, end):
@@ -18,6 +24,7 @@ def fetch_stock_data(ticker, start, end):
 
     return stock_data
 
+
 # Database connection function
 def save_to_postgres(df, ticker):
     """
@@ -25,12 +32,12 @@ def save_to_postgres(df, ticker):
     :param df: Pandas DataFrame containing the stock data.
     :param ticker: The name of the table in the database.
     """
-    # Database credentials and connection string
-    DB_USERNAME = "postgres"
-    DB_PASSWORD = "Dev@2109"
-    DB_HOST = "localhost"
-    DB_PORT = "5432"
-    DB_NAME = "stock_data"  # Make sure this database exists
+    # Load database credentials from environment variables
+    DB_USERNAME = os.getenv("DB_USERNAME")
+    DB_PASSWORD = os.getenv("DB_PASSWORD")
+    DB_HOST = os.getenv("DB_HOST")
+    DB_PORT = os.getenv("DB_PORT")
+    DB_NAME = os.getenv("DB_NAME")
 
     # URL-encode the password to handle special characters like "@"
     encoded_password = urllib.parse.quote(DB_PASSWORD)
@@ -42,6 +49,7 @@ def save_to_postgres(df, ticker):
 
     # Save DataFrame to PostgreSQL
     df.to_sql(ticker, con=engine, if_exists='replace', index=False)
+
 
 # Main function to fetch data and save to PostgreSQL
 if __name__ == "__main__":
