@@ -21,7 +21,7 @@ engine = create_engine(DATABASE_URL)
 
 def transform_stock_data(ticker: str):
     # Read raw data from DB
-    raw_table = f"{ticker.lower()}_stock_data"
+    raw_table = ticker.lower()
     df = pd.read_sql(f"SELECT * FROM {raw_table}", con=engine)
 
     # Debugging step: Print the column names to check if 'Close' exists

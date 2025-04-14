@@ -19,4 +19,4 @@ def save_to_postgres(df, table_name):
     DATABASE_URL = f"postgresql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     engine = create_engine(DATABASE_URL)
 
-    df.to_sql(table_name.lower(), con=engine, if_exists='replace', index=False)
+    df.to_sql(table_name.lower(), con=engine, if_exists='append', index=False)
