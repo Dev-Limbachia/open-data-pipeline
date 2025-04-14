@@ -1,66 +1,62 @@
-import os
-import urllib
-
 import pandas as pd
-from sqlalchemy import create_engine
-from dotenv import load_dotenv
+from src.utils.database_connection import get_db_engine
 
-# Load env variables
-load_dotenv()
-
-# DB Credentials
-DB_USERNAME = os.getenv("DB_USERNAME")
-DB_PASSWORD = urllib.parse.quote(os.getenv("DB_PASSWORD"))
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
-
-DATABASE_URL = f"postgresql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-engine = create_engine(DATABASE_URL)
+engine = get_db_engine()
 
 
-def transform_stock_data(ticker: str):
-    # Read raw data from DB
-    raw_table = ticker.lower()
-    df = pd.read_sql(f"SELECT * FROM {raw_table}", con=engine)
+def transform_group(df):
+    """
+    Perform transformation for a single ticker's data.
+    """
+    # Sort by date (important for rolling calculations)
+    df = df.sort_values(by='date')
 
-    # Debugging step: Print the column names to check if 'Close' exists
-    print(f"Columns in the {raw_table} table:", df.columns)
+    # Calculate daily return (%)
+    df['daily_return'] = ((df['close'] - df['open']) / df['open']) * 100
 
-    # Optionally: Print the first few rows to verify the data
+    # Calculate volatility: (high - low)/open * 100
+    df['volatility'] = ((df['high'] - df['low']) / df['open']) * 100
+
+    # Price difference: close - open
+    df['price_diff'] = df['close'] - df['open']
+
+    # Gain day indicator: 1 if close > open, else 0
+    df['is_gain_day'] = (df['close'] > df['open']).astype(int)
+
+    # Calculate 7-day moving average of close price
+    df['7d_ma'] = df['close'].rolling(window=7, min_periods=1).mean()
+
+    # Calculate 30-day moving average of close price
+    df['30d_ma'] = df['close'].rolling(window=30, min_periods=1).mean()
+
+    return df
+
+
+def transform_stock_data():
+    # Step 1: Read raw data from the unified table "stock_prices"
+    df = pd.read_sql("SELECT * FROM stock_prices", con=engine)
+    if df.empty:
+        print("No data found in the raw stock_prices table.")
+        return
+
+    # Step 2: Ensure that the 'date' column is of datetime type
+    df['date'] = pd.to_datetime(df['date'])
+
+    # (Optional) Print some basic info for debugging
+    print("Raw data sample:")
     print(df.head())
 
-    # === Begin Transformations ===
-    try:
-        # Debugging step: Ensure the column names are clean and stripped of spaces
-        df.columns = df.columns.str.strip()  # Remove any leading/trailing spaces
-        print(f"Cleaned columns: {df.columns}")
+    # Step 3: Group the data by ticker and apply the transformation function
+    transformed = df.groupby('ticker').apply(transform_group).reset_index(drop=True)
 
-        # Check if 'Close' column exists
-        if 'Close' not in df.columns:
-            raise KeyError("'Close' column not found in the DataFrame!")
+    # (Optional) Print a sample of transformed data for verification
+    print("Transformed data sample:")
+    print(transformed.head())
 
-        # Perform the transformations
-        df['daily_return'] = ((df['Close'] - df['Open']) / df['Open']) * 100
-        df['volatility'] = ((df['High'] - df['Low']) / df['Open']) * 100
-        df['price_diff'] = df['Close'] - df['Open']
-        df['is_gain_day'] = (df['Close'] > df['Open']).astype(int)
-
-        # Moving averages
-        df['7d_ma'] = df['Close'].rolling(window=7).mean()
-        df['30d_ma'] = df['Close'].rolling(window=30).mean()
-
-    except KeyError as e:
-        print(f"Error: {e}")
-        return  # Skip this ticker if column is missing
-
-    # Save to new table
-    transformed_table = f"{ticker.lower()}_stock_transformed"
-    df.to_sql(transformed_table, con=engine, if_exists='replace', index=False)
-    print(f"✅ Transformed data saved to table: {transformed_table}")
+    # Step 4: Write the transformed data to a new table
+    transformed.to_sql("stock_prices_transformed", con=engine, if_exists='replace', index=False)
+    print("✅ Transformed data saved successfully to table: stock_prices_transformed")
 
 
 if __name__ == "__main__":
-    tickers = ['AAPL', 'MSFT', 'GOOGL', 'META', 'TSLA']  # Update as needed
-    for ticker in tickers:
-        transform_stock_data(ticker)
+    transform_stock_data()

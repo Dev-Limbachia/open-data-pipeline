@@ -1,4 +1,3 @@
-import asyncio
 import pandas as pd
 from fetch_stock_data import fetch_stock_data
 from save_to_postgres import save_to_postgres
@@ -64,5 +63,6 @@ def main():
         else:
             print(f"❌ No data found for {ticker}.")
 
+
 if __name__ == "__main__":
-    main();
+    main()
